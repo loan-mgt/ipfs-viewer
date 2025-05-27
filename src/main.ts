@@ -12,12 +12,25 @@ const fetch = await createVerifiedFetch({
     return result?.mime || 'application/octet-stream'
   }
 })
- 
-const resp = await fetch('ipfs://bafybeiaysi4s6lnjev27ln5icwm6tueaw2vdykrtjkwiphwekaywqhcjze/I/Kiwix_logo_v3.svg.png.webp', {
+
+function search(){
+  searchRaw(document.querySelector("input#ipfsHash")?.value)
+}
+
+async function searchRaw(path: string){
+
+  console.log("Searching for:", path)
+
+  const resp = await fetch(path, {
   redirect: 'follow'
 })
  
 await handleResponse(resp, resp.headers.get('content-type'))
+
+
+}
+
+
 
 async function handleResponse(resp: Response, contentType: string | null) {
   console.log("Response:", resp)
@@ -332,3 +345,7 @@ function getExtensionFromMime(mimeType: string): string {
   }
   return mimeToExt[mimeType] || 'bin'
 }
+(window as any).search = search
+
+searchRaw('ipfs://bafybeiaysi4s6lnjev27ln5icwm6tueaw2vdykrtjkwiphwekaywqhcjze/I/Kiwix_logo_v3.svg.png.webp')
+
