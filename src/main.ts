@@ -1,7 +1,7 @@
 import './style.css'
 import { createVerifiedFetch } from '@helia/verified-fetch'
 import { fileTypeFromBuffer } from 'file-type'
- 
+
 const fetch = await createVerifiedFetch({
   gateways: ['https://trustless-gateway.link'],
   routers: ['http://delegated-ipfs.dev']
@@ -13,42 +13,29 @@ const fetch = await createVerifiedFetch({
   }
 })
 
-function search(){
+function search() {
   searchRaw(document.querySelector("input#ipfsHash")?.value)
 }
 
-async function searchRaw(path: string){
-
+async function searchRaw(path: string) {
   console.log("Searching for:", path)
 
-  const resp = await fetch(path, {
-  redirect: 'follow'
-})
- 
-await handleResponse(resp, resp.headers.get('content-type'))
-
-
+  const resp = await fetch(path, { redirect: 'follow' })
+  await handleResponse(resp, resp.headers.get('content-type'))
 }
-
-
 
 async function handleResponse(resp: Response, contentType: string | null) {
   console.log("Response:", resp)
   console.log("Content-Type:", contentType)
-  
-  const appElement = document.querySelector("#app")
-  if (!appElement) {
-    console.error("App element not found")
-    return
-  }
 
-  // Fallback to detecting type from response if contentType is null
+  const appElement = document.querySelector("#app")
+  if (!appElement) return
+
   let mimeType = contentType
   if (!mimeType) {
     const buffer = await resp.clone().arrayBuffer()
     const detected = await fileTypeFromBuffer(new Uint8Array(buffer))
     mimeType = detected?.mime || 'application/octet-stream'
-    console.log("Fallback detected type:", mimeType)
   }
 
   try {
@@ -71,38 +58,21 @@ async function handleResponse(resp: Response, contentType: string | null) {
     } else {
       await handleBinary(resp, mimeType, appElement)
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error handling response:", error)
-    appElement.innerHTML = `<div class="error">Error loading content: ${error.message}</div>`
+    appElement.innerHTML = `<div class="text-red-600 font-semibold">Error loading content: ${error.message}</div>`
   }
 }
 
-function isImage(mimeType: string): boolean {
-  return mimeType.startsWith('image/')
-}
-
-function isVideo(mimeType: string): boolean {
-  return mimeType.startsWith('video/')
-}
-
-function isAudio(mimeType: string): boolean {
-  return mimeType.startsWith('audio/')
-}
-
-function isHTML(mimeType: string): boolean {
-  return mimeType === 'text/html' || mimeType === 'application/xhtml+xml'
-}
-
-function isText(mimeType: string): boolean {
-  return mimeType.startsWith('text/') && !isHTML(mimeType)
-}
-
-function isPDF(mimeType: string): boolean {
-  return mimeType === 'application/pdf'
-}
-
-function isArchive(mimeType: string): boolean {
-  const archiveTypes = [
+function isImage(mime: string) { return mime.startsWith('image/') }
+function isVideo(mime: string) { return mime.startsWith('video/') }
+function isAudio(mime: string) { return mime.startsWith('audio/') }
+function isHTML(mime: string) { return mime === 'text/html' || mime === 'application/xhtml+xml' }
+function isText(mime: string) { return mime.startsWith('text/') && !isHTML(mime) }
+function isPDF(mime: string) { return mime === 'application/pdf' }
+function isJSON(mime: string) { return mime === 'application/json' || mime === 'text/json' }
+function isArchive(mime: string) {
+  return [
     'application/zip',
     'application/x-zip-compressed',
     'application/x-rar-compressed',
@@ -111,230 +81,163 @@ function isArchive(mimeType: string): boolean {
     'application/x-gzip',
     'application/x-tar',
     'application/x-bzip2'
-  ]
-  return archiveTypes.includes(mimeType)
+  ].includes(mime)
 }
 
-function isJSON(mimeType: string): boolean {
-  return mimeType === 'application/json' || mimeType === 'text/json'
-}
-
-async function handleImage(resp: Response, mimeType: string, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: mimeType })
-  const imageUrl = URL.createObjectURL(blob)
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Image (${mimeType})</h3>
-      <img src="${imageUrl}" alt="IPFS Image" style="max-width: 100%; height: auto; border: 1px solid #ccc;" />
-      <div class="info">
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-        <a href="${imageUrl}" download="image.${getExtensionFromMime(mimeType)}">Download</a>
-      </div>
+async function handleImage(resp: Response, mime: string, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Image (${mime})</h3>
+      <img src="${url}" alt="Image" class="max-w-full h-auto border border-gray-300 rounded" />
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <a href="${url}" download class="text-blue-600 underline">Download</a>
     </div>
   `
 }
 
-async function handleVideo(resp: Response, mimeType: string, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: mimeType })
-  const videoUrl = URL.createObjectURL(blob)
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Video (${mimeType})</h3>
-      <video controls style="max-width: 100%; height: auto;">
-        <source src="${videoUrl}" type="${mimeType}">
+async function handleVideo(resp: Response, mime: string, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Video (${mime})</h3>
+      <video controls class="max-w-full border border-gray-300 rounded">
+        <source src="${url}" type="${mime}" />
         Your browser does not support the video tag.
       </video>
-      <div class="info">
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-        <a href="${videoUrl}" download="video.${getExtensionFromMime(mimeType)}">Download</a>
-      </div>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <a href="${url}" download class="text-blue-600 underline">Download</a>
     </div>
   `
 }
 
-async function handleAudio(resp: Response, mimeType: string, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: mimeType })
-  const audioUrl = URL.createObjectURL(blob)
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Audio (${mimeType})</h3>
-      <audio controls style="width: 100%;">
-        <source src="${audioUrl}" type="${mimeType}">
+async function handleAudio(resp: Response, mime: string, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Audio (${mime})</h3>
+      <audio controls class="w-full border border-gray-300 rounded">
+        <source src="${url}" type="${mime}" />
         Your browser does not support the audio tag.
       </audio>
-      <div class="info">
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-        <a href="${audioUrl}" download="audio.${getExtensionFromMime(mimeType)}">Download</a>
-      </div>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <a href="${url}" download class="text-blue-600 underline">Download</a>
     </div>
   `
 }
 
-async function handleHTML(resp: Response, appElement: Element) {
-  const htmlContent = await resp.text()
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>HTML Document</h3>
-      <div class="html-preview">
-        <iframe srcdoc="${htmlContent.replace(/"/g, '&quot;')}" 
-                style="width: 100%; height: 500px; border: 1px solid #ccc;">
-        </iframe>
-      </div>
-      <details>
-        <summary>View Source</summary>
-        <pre><code>${htmlContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
+async function handleHTML(resp: Response, el: Element) {
+  const html = await resp.text()
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">HTML Preview</h3>
+      <iframe srcdoc="${html.replace(/"/g, '&quot;')}" class="w-full h-[500px] border border-gray-300 rounded"></iframe>
+      <details class="text-sm text-gray-600">
+        <summary class="cursor-pointer font-medium">View Source</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto whitespace-pre-wrap">${html.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
       </details>
     </div>
   `
 }
 
-async function handleText(resp: Response, mimeType: string, appElement: Element) {
-  const textContent = await resp.text()
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Text File (${mimeType})</h3>
-      <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap;">${textContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-      <div class="info">
-        <p>Size: ${formatBytes(new Blob([textContent]).size)}</p>
-      </div>
+async function handleText(resp: Response, mime: string, el: Element) {
+  const text = await resp.text()
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Text (${mime})</h3>
+      <pre class="bg-gray-100 p-4 rounded overflow-x-auto whitespace-pre-wrap">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(new Blob([text]).size)}</p>
     </div>
   `
 }
 
-async function handlePDF(resp: Response, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-  const pdfUrl = URL.createObjectURL(blob)
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>PDF Document</h3>
-      <iframe src="${pdfUrl}" style="width: 100%; height: 600px; border: 1px solid #ccc;">
-        <p>Your browser does not support PDFs. <a href="${pdfUrl}">Download the PDF</a>.</p>
-      </iframe>
-      <div class="info">
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-        <a href="${pdfUrl}" download="document.pdf">Download PDF</a>
-      </div>
+async function handlePDF(resp: Response, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const url = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">PDF</h3>
+      <iframe src="${url}" class="w-full h-[600px] border border-gray-300 rounded"></iframe>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <a href="${url}" download class="text-blue-600 underline">Download PDF</a>
     </div>
   `
 }
 
-async function handleArchive(resp: Response, mimeType: string, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: mimeType })
-  const archiveUrl = URL.createObjectURL(blob)
-  
-  const extension = getExtensionFromMime(mimeType)
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Archive File (${mimeType})</h3>
-      <div class="archive-info">
-        <p>📁 Archive file detected</p>
-        <p>Type: ${mimeType}</p>
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-        <p>⚠️ Archive contents cannot be previewed in browser</p>
-      </div>
-      <div class="download-section">
-        <a href="${archiveUrl}" download="archive.${extension}" class="download-btn">
-          📥 Download Archive
-        </a>
-      </div>
+async function handleArchive(resp: Response, mime: string, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+  const ext = getExtensionFromMime(mime)
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Archive (${mime})</h3>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <p class="text-yellow-600">⚠️ Cannot preview archive contents</p>
+      <a href="${url}" download="archive.${ext}" class="text-blue-600 underline">Download Archive</a>
     </div>
   `
 }
 
-async function handleJSON(resp: Response, appElement: Element) {
-  const jsonText = await resp.text()
-  let jsonContent
-  
+async function handleJSON(resp: Response, el: Element) {
+  const text = await resp.text()
   try {
-    jsonContent = JSON.parse(jsonText)
-  } catch (e) {
-    appElement.innerHTML = `
-      <div class="content-wrapper">
-        <h3>Invalid JSON</h3>
-        <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto;">${jsonText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+    const json = JSON.parse(text)
+    el.innerHTML = `
+      <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+        <h3 class="text-xl font-semibold">JSON</h3>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto whitespace-pre-wrap">${JSON.stringify(json, null, 2)}</pre>
+        <p class="text-sm text-gray-600">Size: ${formatBytes(new Blob([text]).size)}</p>
       </div>
     `
-    return
-  }
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>JSON Data</h3>
-      <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(jsonContent, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-      <div class="info">
-        <p>Size: ${formatBytes(new Blob([jsonText]).size)}</p>
+  } catch {
+    el.innerHTML = `
+      <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+        <h3 class="text-xl font-semibold text-red-600">Invalid JSON</h3>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto whitespace-pre-wrap">${text}</pre>
       </div>
-    </div>
-  `
+    `
+  }
 }
 
-async function handleBinary(resp: Response, mimeType: string, appElement: Element) {
-  const arrayBuffer = await resp.arrayBuffer()
-  const blob = new Blob([arrayBuffer], { type: mimeType })
-  const binaryUrl = URL.createObjectURL(blob)
-  
-  // Show hex preview for binary files
-  const bytes = new Uint8Array(arrayBuffer)
-  const hexPreview = Array.from(bytes.slice(0, 256))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join(' ')
-    .match(/.{1,48}/g)?.join('\n') || ''
-  
-  appElement.innerHTML = `
-    <div class="content-wrapper">
-      <h3>Binary File (${mimeType})</h3>
-      <div class="binary-info">
-        <p>📄 Binary file detected</p>
-        <p>Type: ${mimeType}</p>
-        <p>Size: ${formatBytes(arrayBuffer.byteLength)}</p>
-      </div>
-      <details>
-        <summary>Hex Preview (first 256 bytes)</summary>
-        <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px;">${hexPreview}</pre>
+async function handleBinary(resp: Response, mime: string, el: Element) {
+  const buffer = await resp.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  const hex = Array.from(bytes.slice(0, 256)).map(b => b.toString(16).padStart(2, '0')).join(' ').match(/.{1,48}/g)?.join('\n') || ''
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+
+  el.innerHTML = `
+    <div class="space-y-4 p-4 bg-white rounded-lg shadow">
+      <h3 class="text-xl font-semibold">Binary (${mime})</h3>
+      <p class="text-sm text-gray-600">Size: ${formatBytes(buffer.byteLength)}</p>
+      <details class="text-sm text-gray-600">
+        <summary class="cursor-pointer font-medium">Hex Preview (first 256 bytes)</summary>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto font-mono text-xs">${hex}</pre>
       </details>
-      <div class="download-section">
-        <a href="${binaryUrl}" download="file.bin" class="download-btn">
-          📥 Download File
-        </a>
-      </div>
+      <a href="${url}" download class="text-blue-600 underline">Download File</a>
     </div>
   `
 }
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-function getExtensionFromMime(mimeType: string): string {
-  const mimeToExt: { [key: string]: string } = {
+function getExtensionFromMime(mime: string): string {
+  const map: { [key: string]: string } = {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/gif': 'gif',
     'image/webp': 'webp',
-    'image/svg+xml': 'svg',
     'video/mp4': 'mp4',
     'video/webm': 'webm',
-    'video/ogg': 'ogv',
-    'audio/mp3': 'mp3',
     'audio/mpeg': 'mp3',
     'audio/wav': 'wav',
-    'audio/ogg': 'ogg',
     'application/pdf': 'pdf',
     'application/zip': 'zip',
     'application/x-rar-compressed': 'rar',
@@ -343,9 +246,8 @@ function getExtensionFromMime(mimeType: string): string {
     'text/html': 'html',
     'application/json': 'json'
   }
-  return mimeToExt[mimeType] || 'bin'
+  return map[mime] || 'bin'
 }
+
 (window as any).search = search
-
 searchRaw('ipfs://bafybeiaysi4s6lnjev27ln5icwm6tueaw2vdykrtjkwiphwekaywqhcjze/I/Kiwix_logo_v3.svg.png.webp')
-
