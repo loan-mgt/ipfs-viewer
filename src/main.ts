@@ -1,8 +1,11 @@
 import './style.css'
-import { createVerifiedFetch } from '@helia/verified-fetch'
+import { createVerifiedFetch, type VerifiedFetch } from '@helia/verified-fetch'
 import { fileTypeFromBuffer } from 'file-type'
 
-const fetch = await createVerifiedFetch(
+let fetch: VerifiedFetch | null = null
+
+async function init(){
+fetch = await createVerifiedFetch(
   {
     gateways: ['https://trustless-gateway.link'],
     routers: ['http://delegated-ipfs.dev']
@@ -15,6 +18,8 @@ const fetch = await createVerifiedFetch(
     }
   }
 )
+
+}
 
 function search() {
   const input = document.querySelector<HTMLInputElement>('input#ipfsHash')?.value
@@ -38,6 +43,13 @@ function showLoading() {
 }
 
 async function searchRaw(path: string) {
+  if (!fetch) {
+    await init()
+  }
+  if (!fetch) {
+    console.error('Fetch not initialized')
+    return
+  }
   console.log('Searching for:', path)
   showLoading()
   const resp = await fetch(path, { redirect: 'follow' })
