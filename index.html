@@ -8,8 +8,8 @@
     <title>IPFS Viewer</title>
   </head>
   <body class="flex flex-col items-center p-5 gap-30">
-    <div id="search">
-      <input class="p-2 bg-[#469EA2] text-white rounded" type="text" id="ipfsHash" placeholder="Enter IPFS hash" value="ipfs://" />
+    <div id="search" class="flex  items-center gap-2 w-120 max-w-full">
+      <input class="p-2 bg-[#469EA2] text-white rounded w-full" type="text" id="ipfsHash" placeholder="Enter IPFS hash" value="ipfs://" />
       <button class="bg-[#6ACAD1] p-2 rounded cursor-pointer" onclick="search()" id="searchButton">Search</button>
     </div>
     <div id="app" class="text-black w-fit flex flex-col items-center"></div>
