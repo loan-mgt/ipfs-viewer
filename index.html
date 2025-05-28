@@ -2,17 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link href="/src/styles.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IPFS Viewer</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
-  <body class="flex flex-col align-center p-5 gap-10">
+  <body class="flex flex-col items-center p-5 gap-30">
     <div id="search">
-      <input class="p-2 bg-black rounded" type="text" id="ipfsHash" placeholder="Enter IPFS hash" value="ipfs://" />
-      <button onclick="search()" id="searchButton">Search</button>
+      <input class="p-2 bg-[#469EA2] text-white rounded" type="text" id="ipfsHash" placeholder="Enter IPFS hash" value="ipfs://" />
+      <button class="bg-[#6ACAD1] p-2 rounded cursor-pointer" onclick="search()" id="searchButton">Search</button>
     </div>
-    <div id="app" class="text-black"></div>
+    <div id="app" class="text-black w-fit flex flex-col items-center"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
